@@ -1,33 +1,49 @@
-import requests
+"""
+Descarga los modelos de MediaPipe Pose Landmarker en la carpeta models/.
+
+    python download_models.py           -> descarga el modelo 'full' (el que se usa)
+    python download_models.py --todos   -> descarga lite, full y heavy
+"""
 import os
+import sys
+
+import requests
 import tqdm
 
-url = {
+URLS = {
     "pose_landmarker_lite.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task",
     "pose_landmarker_full.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task",
-    "pose_landmarker_heavy.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task"
+    "pose_landmarker_heavy.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task",
 }
+CARPETA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 
-for key, value in url.items():
-    print(f"Descargando {key} desde {value}")
-    # Crear el directorio de destino si no existe
-    os.makedirs(os.path.join(os.path.dirname(__file__), 'models'), exist_ok=True)
-    # Definir la ruta de destino
-    archivo_destino = os.path.join(os.path.join(os.path.dirname(__file__), 'models'), key)
 
-    if os.path.exists(archivo_destino):
-        print(f"El archivo {archivo_destino} ya existe. Omitiendo descarga.")
-        continue
+def descargar(nombre, url):
+    destino = os.path.join(CARPETA, nombre)
+    if os.path.exists(destino) and os.path.getsize(destino) > 0:
+        print(f"{nombre}: ya existe, se omite.")
+        return True
+    print(f"Descargando {nombre}...")
+    temporal = destino + ".part"
+    try:
+        with requests.get(url, stream=True, timeout=30) as r:
+            r.raise_for_status()
+            total = int(r.headers.get("content-length", 0))
+            with open(temporal, "wb") as f, tqdm.tqdm(total=total, unit="iB", unit_scale=True) as barra:
+                for trozo in r.iter_content(chunk_size=65536):
+                    f.write(trozo)
+                    barra.update(len(trozo))
+        os.replace(temporal, destino)  # así nunca queda un modelo a medias
+        return True
+    except requests.RequestException as e:
+        print(f"ERROR al descargar {nombre}: {e}")
+        if os.path.exists(temporal):
+            os.remove(temporal)
+        return False
 
-    # Descargar el archivo
-    response = requests.get(value, stream=True)
-    if response.status_code == 200:
-        with open(archivo_destino, 'wb') as f:
-            total_size = int(response.headers.get('content-length', 0))
-            progress_bar = tqdm.tqdm(total=total_size, unit='iB', unit_scale=True)
-            for chunk in response.iter_content(chunk_size=8192):
-                progress_bar.update(len(chunk))
-                f.write(chunk)
-        print("\nDescarga completada.")
-    else:
-        print(f"\nError al descargar: {response.status_code}")
+
+if __name__ == "__main__":
+    os.makedirs(CARPETA, exist_ok=True)
+    nombres = list(URLS) if "--todos" in sys.argv else ["pose_landmarker_full.task"]
+    ok = all([descargar(n, URLS[n]) for n in nombres])
+    sys.exit(0 if ok else 1)

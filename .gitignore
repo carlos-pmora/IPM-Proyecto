@@ -1,2 +1,11 @@
-*.task
+__pycache__/
+*.pyc
+.venv/
+.conda/
 mp_env/
+models/
+*.task
+*.part
+calibracion.json
+metricas*.csv
+.DS_Store
