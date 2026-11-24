@@ -235,13 +235,18 @@ class Vision:
             raise FileNotFoundError(
                 f"No se encuentra el modelo '{modelo_path}'. Ejecuta: python download_models.py")
 
+        with open(modelo_path, "rb") as f:
+            modelo_bytes = f.read()
+
         self.dibujar = dibujar
         self.nombres_angulos = list(angulos) if angulos else list(ANGULOS) + ["tronco"]
         self.vis_min = config.visibilidad_min if visibilidad_min is None else visibilidad_min
         self.alfa = config.suavizado if suavizado is None else suavizado
 
         opciones = mp.tasks.vision.PoseLandmarkerOptions(
-            base_options=mp.tasks.BaseOptions(model_asset_path=modelo_path),
+            # Se pasa el modelo en memoria (no la ruta): en Windows MediaPipe no abre
+            # rutas con tildes o símbolos (p. ej. "Interacción Persona-Máquina").
+            base_options=mp.tasks.BaseOptions(model_asset_buffer=modelo_bytes),
             running_mode=mp.tasks.vision.RunningMode.VIDEO,
             num_poses=1,
         )
