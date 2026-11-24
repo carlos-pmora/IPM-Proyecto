@@ -24,6 +24,11 @@ class Config:
         self.suavizado = 0.5         # 0 = sin suavizar, 0.9 = muy suave (más retraso)
         self.calibracion_path = os.path.join(BASE_DIR, 'calibracion.json')
 
+        # ----- Simón dice (game.py) -----
+        self.duracion_partida = 90      # segundos de juego por partida
+        self.tiempo_sostener = 0.6      # segundos que hay que mantener la postura
+        self.metricas_dir = os.path.join(BASE_DIR, 'metricas')  # CSV de cada partida
+
         # ----- Juego de ejemplo (app.py) -----
         self.padding = 100
         self.game_time = 20     # Duración del juego en segundos

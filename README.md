@@ -1,11 +1,77 @@
-# IPM – Práctica 2: juego serio con visión por computador
+# Simón dice – juego serio con visión por computador
 
-Juego serio controlado con el cuerpo mediante la cámara y **MediaPipe Pose**
-(Google), orientado a la rehabilitación física y la estimación de la fragilidad.
+IPM – Práctica 2. Juego serio controlado con el cuerpo mediante la cámara y
+**MediaPipe Pose** (Google), orientado a la rehabilitación física, el
+mantenimiento de la movilidad y la estimación de la fragilidad.
 
 ## El juego
 
-> _Sección del juego: objetivo, utilidad para la salud y cómo se juega (pendiente, Carlos)._
+### Objetivo
+
+Es el clásico **«Simón dice»** jugado con el cuerpo. En pantalla aparece una orden
+con un muñeco que la muestra, por ejemplo *«Simón dice: levanta el brazo izquierdo»*.
+El jugador tiene que hacer esa postura y mantenerla un momento. Si la orden **no**
+empieza por «Simón dice», es una trampa: hay que quedarse quieto. Se trata de
+conseguir el máximo de puntos en 90 segundos.
+
+### Utilidad para la salud
+
+- **Movilidad y rango articular**: las posturas trabajan la elevación y apertura de
+  hombros, la flexión del codo, la inclinación del tronco y, jugando de pie, la
+  flexión de cadera y rodilla (marcha en el sitio, sentadilla).
+- **Equilibrio**: levantar una rodilla o inclinarse obliga a mantener el equilibrio
+  sobre un apoyo, una de las capacidades que más se relacionan con la fragilidad y
+  el riesgo de caídas.
+- **Función cognitiva**: el juego combina atención, memoria de trabajo, lateralidad
+  (izquierda/derecha, cruzar la línea media del cuerpo) y **control inhibitorio**
+  (no moverse cuando Simón no lo dice).
+- **Seguimiento**: cada partida guarda métricas objetivas (tiempo de reacción,
+  aciertos, ángulo máximo de hombros, extensión del brazo…) en un CSV. Comparando
+  partidas, un fisioterapeuta puede ver la evolución del paciente sin aparatos
+  especiales, solo con una webcam.
+- **Accesible**: se puede jugar **sentado** (por defecto, más seguro para personas
+  mayores o con poca movilidad) o **de pie** (añade posturas de piernas).
+
+### Cómo se juega
+
+1. Colócate delante de la cámara de forma que se te vea al menos de cabeza a
+   cintura (de pie, que se vea el cuerpo entero), a 1,5 – 2 m.
+2. *(Opcional)* Pulsa **C** para calibrar tu alcance.
+3. Pulsa **P** para elegir entre jugar sentado o de pie, y **ENTER** para empezar.
+4. Haz cada postura en cuanto aparezca la orden y mantenla hasta que se llene la
+   barra verde. Si no pone «Simón dice», no te muevas hasta que pase el tiempo.
+
+| Resultado | Puntos |
+|---|---|
+| Postura correcta | 10 + hasta 5 de bonus por rapidez |
+| Trampa evitada (no moverse) | 5 |
+| Moverse en una trampa / tiempo agotado | 0 |
+
+**Niveles** (se sube con aciertos seguidos):
+
+| Nivel | Tiempo por orden | Trampas | Posturas nuevas |
+|---|---|---|---|
+| 1 | 6 s | no | brazo izq./der. arriba, brazos arriba, brazos en cruz |
+| 2 | 5 s | 25 % | manos a la cabeza, manos juntas, inclinarse a izq./der. (de pie: rodilla izq./der. arriba) |
+| 3 | 4 s | 30 % | tocar el hombro contrario con cada mano (de pie: sentadilla) |
+
+Si el jugador sale de la imagen, el tiempo se detiene hasta que vuelve. **ESC**
+termina la partida; al final se muestra un resumen y se guarda en `metricas/`.
+
+### Sin cámara
+
+`python game.py --raton` (o automáticamente si no hay cámara): aparece un botón
+por postura y hay que mantener pulsado el de la orden. Sirve para probar el juego,
+y usa el mismo diccionario de datos que la visión.
+
+### Métricas guardadas
+
+- `metricas/partidas.csv`: una fila por partida con fecha, modo, puntos, nivel
+  máximo, aciertos, fallos, trampas evitadas/falladas, precisión, tiempo de
+  reacción medio y mínimo, extensión máxima de cada brazo (respecto a la
+  calibración), elevación máxima de cada hombro e inclinación máxima del tronco.
+- `metricas/rondas.csv`: una fila por orden (postura, si era trampa, resultado y
+  tiempo de reacción), para analizar qué posturas cuestan más.
 
 ---
 
@@ -69,7 +135,7 @@ Python): tarda menos de un minuto y ocupa unos 900 MB.
 
 | Comando | Para qué |
 |---|---|
-| `jugar.bat` / `python game.py` | Jugar |
+| `jugar.bat` / `python game.py` | Jugar (opciones: `--raton`, `--de-pie`, `--camara N`) |
 | `python vision.py` | Demo de visión: esqueleto, manos y ángulos en vivo (`C` calibra, `ESC` sale) |
 | `python vision.py --calibrar` | Hacer la calibración y guardarla en `calibracion.json` |
 | `python probar_camara.py` | Diagnóstico de cámara: qué índice/backend da imagen |
@@ -115,6 +181,7 @@ entre módulos*). En cada fotograma `Vision.leer()` devuelve:
 | `puntos` | `dict` | *(extra)* Puntos clave visibles: hombros, codos, muñecas, caderas, rodillas… |
 | `extension` | `dict` | *(extra)* Extensión del brazo respecto al alcance calibrado (1.0 = máximo) |
 | `alcance` | `dict` o `None` | *(extra)* Resultado de la calibración |
+| `poses` | `dict` | *(extra)* Posturas de «Simón dice» detectadas, `True`/`False` (ver `poses.py`) |
 
 ```python
 from vision import Vision
@@ -154,6 +221,22 @@ distancia a la cámara). Se puede lanzar con su propia ventana (`vision.calibrar
 o integrarla en el juego con la clase `Calibracion`, que no depende de ninguna
 librería gráfica.
 
+## Implementación: posturas (`poses.py`) y juego (`game.py`)
+
+`poses.py` convierte los puntos de MediaPipe en posturas (`datos["poses"]`, un
+`True`/`False` por postura). Todas las distancias se miden en **anchos de
+hombros**, así que funciona igual cerca o lejos de la cámara y con personas de
+cualquier talla. Por ejemplo, «brazo arriba» es la mano al menos un ancho de
+hombros por encima del hombro con el codo estirado (> 130°), e «inclinarse» es la
+línea de hombros inclinada más de 15°. Los umbrales están juntos en `UMBRAL` para
+poder ajustarlos.
+
+`game.py` es una máquina de estados (inicio → calibración → cuenta atrás → orden →
+resultado → fin) que solo lee el diccionario del contrato. La postura tiene que
+mantenerse 0,6 s (`config.tiempo_sostener`) para evitar aciertos por casualidad, y
+el tiempo de reacción se mide desde que aparece la orden hasta que se detecta la
+postura por primera vez.
+
 ## Estructura
 
 ```
@@ -163,7 +246,9 @@ requirements.txt           dependencias fijadas
 download_models.py         descarga el modelo de MediaPipe
 config.py                  configuración (cámara, modelo, juego)
 vision.py                  visión: MediaPipe Pose -> diccionario del contrato
+poses.py                   reconocimiento de posturas + pictogramas
 probar_camara.py           diagnóstico de cámara
-game.py                    el juego
+game.py                    el juego: Simón dice
+metricas/                  CSV con las métricas de cada partida (se crea al jugar)
 app.py                     juego de ejemplo original de la asignatura
 ```

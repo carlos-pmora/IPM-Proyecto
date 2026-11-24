@@ -18,6 +18,7 @@ Campos extra (opcionales, el juego puede ignorarlos):
                    como en la calibración). None si no hay calibración.
     alcance   : dict | None              -> resultado de la calibración (ver Calibracion)
     tiempo    : float                    -> instante del fotograma (time.time())
+    poses     : {nombre: bool}           -> posturas de "Simón dice" detectadas (poses.py)
 
 "izquierda" y "derecha" son SIEMPRE las del jugador. Como la imagen está en modo
 espejo, su mano izquierda aparece en la parte izquierda de la pantalla.
@@ -50,6 +51,7 @@ import mediapipe as mp  # noqa: E402
 import numpy as np  # noqa: E402
 
 from config import config  # noqa: E402
+from poses import detectar_poses  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #
@@ -334,6 +336,7 @@ class Vision:
             "alcance": self.alcance,
             "tiempo": time.time(),
         }
+        datos["poses"] = detectar_poses(datos)  # posturas de "Simón dice" (ver poses.py)
         if self.dibujar:
             dibujar_esqueleto(frame, datos)
         return datos
@@ -606,6 +609,9 @@ def _demo():
             if ext["izq"] is not None or ext["der"] is not None:
                 texto += f" | ext izq {ext['izq'] or 0:.2f} der {ext['der'] or 0:.2f}"
             cv2.putText(frame, texto, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            activas = [n for n, v in datos["poses"].items() if v]
+            for i, nombre in enumerate(activas):
+                cv2.putText(frame, nombre, (10, 55 + 22 * i), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
             cv2.putText(frame, "ESC: salir  C: calibrar", (10, frame.shape[0] - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
             cv2.imshow("Vision - demo", frame)

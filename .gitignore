@@ -7,5 +7,5 @@ models/
 *.task
 *.part
 calibracion.json
-metricas*.csv
+metricas/
 .DS_Store
