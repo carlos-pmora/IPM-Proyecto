@@ -183,6 +183,14 @@ def abrir_camara(fuente=None, ancho=None, alto=None, verbose=True):
                 return cap
         if not existe:
             break  # las cámaras van seguidas: si esta no existe, las siguientes tampoco
+    if fuente is not None:
+        # la cámara pedida no sirve (p. ej. IPM_CAMARA=1 pero hoy solo hay una): buscar otra
+        if verbose:
+            print(f"[vision] La cámara {fuente} no funciona; buscando otra...")
+        try:
+            return abrir_camara(None, ancho, alto, verbose)
+        except RuntimeError:
+            pass
     raise RuntimeError(
         "No se ha encontrado ninguna cámara que dé imagen.\n" + "\n".join(informe) +
         "\n" + consejos_camara() + "\nPara más detalle: python probar_camara.py"

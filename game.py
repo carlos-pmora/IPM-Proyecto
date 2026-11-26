@@ -9,7 +9,10 @@ tiene que hacer esa postura y mantenerla un momento. Si la orden NO empieza por
     python game.py --raton    -> con el ratón: se pulsa el botón de la postura
     python game.py --camara 1 -> elegir la cámara
 
-Teclas: ENTER empezar · C calibrar · P jugar de pie / sentado · ESC salir.
+Las órdenes se dicen también en voz alta (voz.py). Hacer la postura cuando
+Simón no lo ha dicho resta puntos.
+
+Teclas: ENTER empezar · C calibrar · P jugar de pie / sentado · V voz sí/no · ESC salir.
 
 Solo lee el diccionario del contrato (persona, mano_izq, mano_der, angulos,
 frame) más los extras de vision.py (poses, extension).
@@ -27,12 +30,15 @@ import numpy as np
 
 from config import config
 from poses import POSES, dibujar_pictograma
+from voz import Voz
 
 ANCHO, ALTO = 960, 720
 VENTANA = "Simon dice"
 FUENTE = cv2.FONT_HERSHEY_SIMPLEX
 
 # Niveles: tiempo para responder, probabilidad de orden trampa y aciertos seguidos para subir
+PENALIZACION_TRAMPA = 5   # puntos que se pierden al moverse cuando Simón no lo dijo
+
 NIVELES = {
     1: {"tiempo": 6.0, "trampas": 0.0, "subir": 4},
     2: {"tiempo": 5.0, "trampas": 0.25, "subir": 5},
@@ -152,8 +158,9 @@ def record_anterior():
 class Juego:
     """Máquina de estados: inicio -> (calibrando) -> cuenta -> jugando <-> resultado -> fin."""
 
-    def __init__(self, fuente, de_pie=False):
+    def __init__(self, fuente, de_pie=False, voz=None):
         self.fuente = fuente
+        self.voz = voz or Voz(activa=False)
         self.modo = getattr(fuente, "modo", "camara")
         self.de_pie = de_pie
         self.estado = "inicio"
@@ -192,6 +199,7 @@ class Juego:
         self.t_sostenido = 0.0
         self.reaccion = None
         self.estado = "jugando"
+        self.voz.decir(("Simón dice: " if self.simon else "") + POSES[self.pose].dicho)
 
     def resolver(self, resultado):
         lim = NIVELES[self.nivel]["tiempo"]
@@ -200,6 +208,8 @@ class Juego:
             ganados = 10 + int(5 * max(0.0, 1 - (self.reaccion or lim) / lim))  # bonus por rapidez
         elif resultado == "trampa_superada":
             ganados = 5
+        elif resultado == "trampa_fallada":
+            ganados = -min(PENALIZACION_TRAMPA, self.puntos)  # nunca por debajo de 0
         self.puntos += ganados
         bueno = resultado in ("acierto", "trampa_superada")
         self.racha = self.racha + 1 if bueno else 0
@@ -209,7 +219,7 @@ class Juego:
         mensajes = {
             "acierto": (f"Muy bien!  +{ganados}", VERDE),
             "trampa_superada": ("Bien! Simon no lo dijo  +5", VERDE),
-            "trampa_fallada": ("Simon no lo dijo!", ROJO),
+            "trampa_fallada": (f"Simon no lo dijo!  {ganados}" if ganados else "Simon no lo dijo!", ROJO),
             "tiempo_agotado": ("Se acabo el tiempo", AMARILLO),
         }
         self.mensaje, self.color_mensaje = mensajes[resultado]
@@ -281,6 +291,9 @@ class Juego:
                 self.empezar(ahora)
             elif tecla in (ord("p"), ord("P")):
                 self.de_pie = not self.de_pie
+            elif tecla in (ord("v"), ord("V")):
+                self.voz.activa = not self.voz.activa
+                self.voz.decir("Voz activada")
             elif tecla in (ord("c"), ord("C")) and self.modo == "camara":
                 from vision import Calibracion
                 self.calibracion = Calibracion()
@@ -353,12 +366,14 @@ class Juego:
         lineas = [
             ("ENTER", "empezar a jugar"),
             ("P", f"jugar {'sentado' if self.de_pie else 'de pie'} (ahora: {'DE PIE' if self.de_pie else 'SENTADO'})"),
+            ("V", f"voz: {'SI' if self.voz.activa else 'NO'}"
+                  + ("" if self.voz.disponible else " (no disponible en este equipo)")),
             ("ESC", "salir"),
         ]
         if self.modo == "camara":
             lineas.insert(1, ("C", "calibrar mi alcance"))
         for i, (tecla, desc) in enumerate(lineas):
-            y = 430 + i * 45
+            y = 420 + i * 42
             texto(img, tecla, 250, y, 0.9, AMARILLO, 2)
             texto(img, desc, 370, y, 0.9, BLANCO, 2)
         if self.modo == "raton":
@@ -474,6 +489,7 @@ def main():
     parser.add_argument("--camara", type=int, help="índice de la cámara")
     parser.add_argument("--video", help="usar un vídeo en vez de la cámara (pruebas)")
     parser.add_argument("--de-pie", action="store_true", help="incluir posturas de piernas")
+    parser.add_argument("--sin-voz", action="store_true", help="no leer las órdenes en voz alta")
     args = parser.parse_args()
 
     fuente = None
@@ -486,7 +502,8 @@ def main():
     if fuente is None:
         fuente = FuenteRaton()
 
-    juego = Juego(fuente, de_pie=args.de_pie)
+    voz = Voz(activa=not args.sin_voz)
+    juego = Juego(fuente, de_pie=args.de_pie, voz=voz)
     cv2.namedWindow(VENTANA)
     if isinstance(fuente, FuenteRaton):
         cv2.setMouseCallback(VENTANA, fuente.evento)
@@ -514,6 +531,7 @@ def main():
         if juego.estado in ("jugando", "resultado", "cuenta"):
             juego.terminar(time.time())
         fuente.cerrar()
+        voz.cerrar()
         cv2.destroyAllWindows()
 
 

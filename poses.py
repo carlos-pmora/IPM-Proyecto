@@ -15,8 +15,9 @@ import cv2
 
 
 class Pose:
-    def __init__(self, texto, corto, nivel, de_pie=False, figura=None):
+    def __init__(self, texto, corto, nivel, de_pie=False, figura=None, dicho=None):
         self.texto = texto        # orden que se muestra (sin tildes: OpenCV no las dibuja)
+        self.dicho = dicho or texto  # orden que se dice en voz alta (con tildes)
         self.corto = corto        # etiqueta corta (botones del modo ratón)
         self.nivel = nivel        # nivel a partir del cual aparece
         self.de_pie = de_pie      # necesita que se vean las piernas
@@ -37,9 +38,9 @@ POSES = {
     "manos_juntas": Pose("Junta las manos delante", "Manos juntas", 2,
                          figura={"izq": "juntas", "der": "juntas"}),
     "inclinar_izq": Pose("Inclinate hacia tu izquierda", "Inclinar izq.", 2,
-                         figura={"inclinar": -1}),
+                         figura={"inclinar": -1}, dicho="Inclínate hacia tu izquierda"),
     "inclinar_der": Pose("Inclinate hacia tu derecha", "Inclinar der.", 2,
-                         figura={"inclinar": 1}),
+                         figura={"inclinar": 1}, dicho="Inclínate hacia tu derecha"),
     "mano_izq_hombro_der": Pose("Toca tu hombro derecho con la mano izquierda", "Mano izq. a hombro der.", 3,
                                 figura={"izq": "hombro"}),
     "mano_der_hombro_izq": Pose("Toca tu hombro izquierdo con la mano derecha", "Mano der. a hombro izq.", 3,

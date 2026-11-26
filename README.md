@@ -37,7 +37,8 @@ conseguir el máximo de puntos en 90 segundos.
 1. Colócate delante de la cámara de forma que se te vea al menos de cabeza a
    cintura (de pie, que se vea el cuerpo entero), a 1,5 – 2 m.
 2. *(Opcional)* Pulsa **C** para calibrar tu alcance.
-3. Pulsa **P** para elegir entre jugar sentado o de pie, y **ENTER** para empezar.
+3. Pulsa **P** para elegir entre jugar sentado o de pie, **V** para activar o
+   quitar la voz, y **ENTER** para empezar.
 4. Haz cada postura en cuanto aparezca la orden y mantenla hasta que se llene la
    barra verde. Si no pone «Simón dice», no te muevas hasta que pase el tiempo.
 
@@ -45,7 +46,8 @@ conseguir el máximo de puntos en 90 segundos.
 |---|---|
 | Postura correcta | 10 + hasta 5 de bonus por rapidez |
 | Trampa evitada (no moverse) | 5 |
-| Moverse en una trampa / tiempo agotado | 0 |
+| Moverse en una trampa (Simón no lo dijo) | **−5** (el marcador no baja de 0) |
+| Tiempo agotado | 0 |
 
 **Niveles** (se sube con aciertos seguidos):
 
@@ -57,6 +59,17 @@ conseguir el máximo de puntos en 90 segundos.
 
 Si el jugador sale de la imagen, el tiempo se detiene hasta que vuelve. **ESC**
 termina la partida; al final se muestra un resumen y se guarda en `metricas/`.
+
+### Voz
+
+Las órdenes se leen en voz alta («Simón dice: levanta el brazo izquierdo»), así
+que no hace falta mirar la pantalla y el juego es más accesible. Se usa la voz
+del propio sistema y no hay que instalar nada: `say` en macOS, la voz de Windows
+(System.Speech) en Windows y `espeak-ng` en Linux si está instalado. Se elige una
+voz en español si hay alguna. Si en macOS suena con acento inglés, añade una voz
+española en *Ajustes del Sistema → Accesibilidad → Contenido leído → Voz del
+sistema → Gestionar voces*. `python voz.py` hace una prueba rápida y
+`python game.py --sin-voz` juega sin voz.
 
 ### Sin cámara
 
@@ -135,7 +148,8 @@ Python): tarda menos de un minuto y ocupa unos 900 MB.
 
 | Comando | Para qué |
 |---|---|
-| `jugar.bat` / `python game.py` | Jugar (opciones: `--raton`, `--de-pie`, `--camara N`) |
+| `jugar.bat` / `python game.py` | Jugar (opciones: `--raton`, `--de-pie`, `--sin-voz`, `--camara N`) |
+| `python voz.py` | Probar la voz |
 | `python vision.py` | Demo de visión: esqueleto, manos y ángulos en vivo (`C` calibra, `ESC` sale) |
 | `python vision.py --calibrar` | Hacer la calibración y guardarla en `calibracion.json` |
 | `python probar_camara.py` | Diagnóstico de cámara: qué índice/backend da imagen |
@@ -247,6 +261,7 @@ download_models.py         descarga el modelo de MediaPipe
 config.py                  configuración (cámara, modelo, juego)
 vision.py                  visión: MediaPipe Pose -> diccionario del contrato
 poses.py                   reconocimiento de posturas + pictogramas
+voz.py                     lectura de las órdenes en voz alta
 probar_camara.py           diagnóstico de cámara
 game.py                    el juego: Simón dice
 metricas/                  CSV con las métricas de cada partida (se crea al jugar)
